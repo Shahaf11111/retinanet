@@ -61,7 +61,7 @@ def main(args=None):
         os.mkdir(run_dir)
     else:
         run_dir = get_last_run_dir()
-
+    print('Using {} directory'.format(run_dir))
     results_file = os.path.join(run_dir, 'retinanet-depth{}.txt'.format(parser.depth))
     checkpoint_file = os.path.join(run_dir, 'retinanet-depth{}.pt'.format(parser.depth))
     # Create the data loaders
@@ -193,7 +193,7 @@ def main(args=None):
                 reg_loss.append(float(regression_loss))
 
                 progress_bar.set_description(
-                    'Epoch: {}/{} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(
+                    'Epoch: {}/{} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}\n'.format(
                         epoch_num, parser.epochs - 1, float(classification_loss), float(regression_loss),
                         np.mean(loss_hist)))
 
