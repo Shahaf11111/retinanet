@@ -25,13 +25,13 @@ assert torch.__version__.split('.')[0] == '1'
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 
-def get_last_model_path(depth, search_dir='runs'):
+def get_last_model_path(depth, search_dir='retinanet/runs'):
     last_list = glob.glob(f'{search_dir}/*.pt', recursive=True)
     last_list = [path for path in last_list if str(depth) in path]
     return max(last_list, key=os.path.getctime)
 
 
-def get_last_run_dir(search_dir='runs'):
+def get_last_run_dir(search_dir='retinanet/runs'):
     last_list = glob.glob(f'{search_dir}/*', recursive=True)
     last_list = [p for p in last_list if os.path.isdir(p)]
     return max(last_list, key=os.path.getctime) if len(last_list) > 0 else None
