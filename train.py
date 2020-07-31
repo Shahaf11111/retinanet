@@ -54,7 +54,7 @@ def main(args=None):
     if parser.resume is False:
         run_dir = get_last_run_dir()
         if run_dir is None:
-            run_dir = './runs/exp0'
+            run_dir = 'retinanet/runs/exp0'
         else:
             next_run_number = max([int(n) for n in re.findall(r'\d+', run_dir)]) + 1
             run_dir = run_dir[:-1] + str(next_run_number)
