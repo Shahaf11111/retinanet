@@ -193,9 +193,8 @@ def main(args=None):
                 reg_loss.append(float(regression_loss))
 
                 progress_bar.set_description(
-                    'Epoch: {}/{} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}\n'.format(
-                        epoch_num, parser.epochs - 1, float(classification_loss), float(regression_loss),
-                        np.mean(loss_hist)))
+                    'Epoch: {}/{} | clsLoss: {:1.5f} |  regLoss: {:1.5f} | runLoss: {:1.5f}\n'.format(
+                        epoch_num, parser.epochs - 1, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
 
             except Exception as e:
                 print("Exception: " + e)
