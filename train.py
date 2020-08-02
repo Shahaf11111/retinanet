@@ -10,6 +10,8 @@ import torch.optim as optim
 from torchvision import transforms
 from tqdm import tqdm
 
+import albumentations as A
+
 from retinanet import model
 from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
     Normalizer
@@ -46,7 +48,7 @@ def main(args=None):
     parser.add_argument('--csv_classes', help='Path to file containing class list (see readme)')
     parser.add_argument('--csv_val', help='Path to file containing validation annotations (optional, see readme)')
     parser.add_argument('--resume', action='store_true', help='Resume training for an existing PT file (optional)')
-
+    parser.add_argument('--augment', action='store_true', help='Train with Albumentations\' transforms (optional)')
     parser.add_argument('--depth', help='Resnet depth, must be one of 18, 34, 50, 101, 152', type=int, default=50)
     parser.add_argument('--epochs', help='Number of epochs', type=int, default=100)
 
@@ -85,8 +87,12 @@ def main(args=None):
         if parser.csv_classes is None:
             raise ValueError('Must provide --csv_classes when training on COCO,')
 
-        dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes,
-                                   transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+        if parser.augment:
+            augs = get_augs()
+        else:
+            augs = None
+
+        dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes, transform=augs)
 
         if parser.csv_val is None:
             dataset_val = None
@@ -230,6 +236,28 @@ def main(args=None):
         scheduler.step(np.mean(epoch_loss))
 
     retinanet.eval()
+
+
+def get_augs():
+    return [
+        A.OneOf([
+            A.HorizontalFlip(p=0.2),
+            A.VerticalFlip(p=0.2)
+        ]),
+        A.OneOf([
+            A.ToGray(p=0.2),
+            A.RandomRain(slant_lower=-10, slant_upper=10, drop_length=20, drop_width=1, drop_color=(200, 200, 200),
+                         blur_value=7, brightness_coefficient=0.7, rain_type=None, always_apply=False, p=0.2),
+            A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.5, alpha_coef=0.08, always_apply=False, p=0.2),
+            A.RandomSunFlare(flare_roi=(0, 0, 1, 0.5), angle_lower=0, angle_upper=1, num_flare_circles_lower=6,
+                             num_flare_circles_upper=10, src_radius=100, src_color=(255, 255, 255),
+                             always_apply=False,
+                             p=0.2),
+            A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5,
+                           always_apply=False, p=0.2)
+        ])
+    ]
+
 
 
 if __name__ == '__main__':

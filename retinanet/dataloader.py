@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import random
 import csv
+import albumentations as A
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
@@ -18,6 +19,7 @@ import skimage.color
 import skimage
 
 from PIL import Image
+import matplotlib.pyplot as plt
 
 
 class CocoDataset(Dataset):
@@ -135,8 +137,12 @@ class CSVDataset(Dataset):
         """
         self.train_file = train_file
         self.class_list = class_list
-        self.transform = transform
-
+        if transform:
+            self.transform = A.Compose(transform,
+                                       bbox_params=A.BboxParams(format='coco',
+                                                                label_fields=['category_ids']))
+        else:
+            self.transform = None
         # parse the provided class file
         try:
             with self._open_for_csv(self.class_list) as file:
@@ -203,11 +209,28 @@ class CSVDataset(Dataset):
 
         img = self.load_image(idx)
         annot = self.load_annotations(idx)
-        sample = {'img': img, 'annot': annot}
+        boxes, cls_ids = self.from_annot_to_coco(annot)
         if self.transform:
-            sample = self.transform(sample)
+            sample = self.transform(image=img, bboxes=boxes, category_ids=cls_ids)
+            img, annot = self.from_coco_to_annot(sample)
+        return {'img': img, 'annot': annot}
 
-        return sample
+    def from_annot_to_coco(self, annot):
+        boxes, ids = [], []
+        for a in annot:
+            x1, y1, x2, y2, cls = a
+            boxes.append([int(x1), int(y1), int(x2 - x1), int(y2 - y1)])
+            ids.append(cls)
+        return boxes, ids
+
+    def from_coco_to_annot(self, coco):
+        img, boxes, cls = coco['image'], coco['bboxes'], coco['category_ids']
+        annot = []
+        for i in range(len(cls)):
+            annot.append([int(boxes[i][0]), int(boxes[i][1]),
+                          int(boxes[i][0] + boxes[i][2]), int(boxes[i][1] + boxes[i][3]),
+                          int(cls[i])])
+        return img, annot
 
     def load_image(self, image_index):
         img = skimage.io.imread(self.image_names[image_index])
