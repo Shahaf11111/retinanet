@@ -6,7 +6,8 @@ import csv
 import cv2
 import argparse
 import pandas as pd
-import ntpath
+import re
+import retinanet.model as model
 
 
 def load_classes(csv_reader):
@@ -43,8 +44,7 @@ def detect_image(image_path, model_path, class_list, visualize):
     for key, value in classes.items():
         labels[value] = key
 
-    model = torch.load(model_path)['model']
-
+    model = load_model(model_path, num_classes=len(classes))
     if torch.cuda.is_available():
         model = model.cuda()
 
@@ -137,6 +137,24 @@ def dict_to_df(d):
     return df
 
 
+def load_model(model_path, num_classes=1):
+    depth = int(re.findall(r'\d+', os.path.basename(model_path))[0])
+    if depth == 18:
+        retinanet = model.resnet18(num_classes=num_classes, pretrained=False)
+    elif depth == 34:
+        retinanet = model.resnet34(num_classes=num_classes, pretrained=False)
+    elif depth == 50:
+        retinanet = model.resnet50(num_classes=num_classes, pretrained=False)
+    elif depth == 101:
+        retinanet = model.resnet101(num_classes=num_classes, pretrained=False)
+    elif depth == 152:
+        retinanet = model.resnet152(num_classes=num_classes, pretrained=False)
+    else:
+        raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
+    retinanet.load_state_dict(torch.load(model_path)['model'], strict=False)
+    return retinanet
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Simple script for visualizing result of training.')
@@ -147,7 +165,8 @@ if __name__ == '__main__':
     parser.add_argument('--visualize', help='True: Visualize the results. False: Creates results.csv file.')
 
     parser = parser.parse_args()
-    results_path = os.path.basename(parser.model_path).split('.')[0] + '.csv'
+    results_path = os.path.join(os.path.abspath(os.path.join(parser.model_path, os.pardir)),
+                                os.path.basename(parser.model_path).split('.')[0] + '.csv')
 
     results_dict = detect_image(parser.image_dir, parser.model_path, parser.class_list, parser.visualize)
     if not parser.visualize:

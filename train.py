@@ -69,15 +69,18 @@ def main(args=None):
     results_file = os.path.join(run_dir, 'retinanet-depth{}.txt'.format(parser.depth))
     checkpoint_file = os.path.join(run_dir, 'retinanet-depth{}.pt'.format(parser.depth))
     # Create the data loaders
-    if parser.dataset == 'coco':
 
+    base_transform = transforms.Compose([Resizer()])
+
+    if parser.dataset == 'coco':
+        # No guarantee that would work..
         if parser.coco_path is None:
             raise ValueError('Must provide --coco_path when training on COCO,')
 
         dataset_train = CocoDataset(parser.coco_path, set_name='train2017',
-                                    transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+                                    base_transform=base_transform)
         dataset_val = CocoDataset(parser.coco_path, set_name='val2017',
-                                  transform=transforms.Compose([Normalizer(), Resizer()]))
+                                  base_transform=base_transform)
 
     elif parser.dataset == 'csv':
 
@@ -92,14 +95,15 @@ def main(args=None):
         else:
             augs = None
 
-        dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes, transform=augs)
+        dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes,
+                                   transform=augs, base_transform=base_transform)
 
         if parser.csv_val is None:
             dataset_val = None
             print('No validation annotations provided.')
         else:
             dataset_val = CSVDataset(train_file=parser.csv_val, class_list=parser.csv_classes,
-                                     transform=transforms.Compose([Normalizer(), Resizer()]))
+                                     transform=None, base_transform=base_transform)
 
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
@@ -205,7 +209,7 @@ def main(args=None):
                         epoch_num, parser.epochs - 1, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
 
             except Exception as e:
-                print("Exception: " + e)
+                print("Exception: " + str(e))
                 continue
 
         if parser.dataset == 'coco':
@@ -257,7 +261,6 @@ def get_augs():
                            always_apply=False, p=0.2)
         ])
     ]
-
 
 
 if __name__ == '__main__':

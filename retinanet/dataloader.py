@@ -35,7 +35,6 @@ class CocoDataset(Dataset):
         self.root_dir = root_dir
         self.set_name = set_name
         self.transform = transform
-
         self.coco      = COCO(os.path.join(self.root_dir, 'annotations', 'instances_' + self.set_name + '.json'))
         self.image_ids = self.coco.getImgIds()
 
@@ -69,7 +68,6 @@ class CocoDataset(Dataset):
         sample = {'img': img, 'annot': annot}
         if self.transform:
             sample = self.transform(sample)
-
         return sample
 
     def load_image(self, image_index):
@@ -128,7 +126,7 @@ class CocoDataset(Dataset):
 class CSVDataset(Dataset):
     """CSV dataset."""
 
-    def __init__(self, train_file, class_list, transform=None):
+    def __init__(self, train_file, class_list, transform=None, base_transform=None):
         """
         Args:
             train_file (string): CSV file with training annotations
@@ -143,6 +141,7 @@ class CSVDataset(Dataset):
                                                                 label_fields=['category_ids']))
         else:
             self.transform = None
+        self.base_transform = base_transform
         # parse the provided class file
         try:
             with self._open_for_csv(self.class_list) as file:
@@ -213,7 +212,10 @@ class CSVDataset(Dataset):
         if self.transform:
             sample = self.transform(image=img, bboxes=boxes, category_ids=cls_ids)
             img, annot = self.from_coco_to_annot(sample)
-        return {'img': img, 'annot': annot}
+            sample = {'img': img, 'annot': annot}
+        if self.base_transform:
+            sample = self.base_transform(sample)
+        return sample
 
     def from_annot_to_coco(self, annot):
         boxes, ids = [], []
@@ -227,10 +229,10 @@ class CSVDataset(Dataset):
         img, boxes, cls = coco['image'], coco['bboxes'], coco['category_ids']
         annot = []
         for i in range(len(cls)):
-            annot.append([int(boxes[i][0]), int(boxes[i][1]),
-                          int(boxes[i][0] + boxes[i][2]), int(boxes[i][1] + boxes[i][3]),
-                          int(cls[i])])
-        return img, annot
+            annot.append([boxes[i][0], boxes[i][1],
+                          boxes[i][0] + boxes[i][2], boxes[i][1] + boxes[i][3],
+                          cls[i]])
+        return img, np.array(annot, dtype='float64')
 
     def load_image(self, image_index):
         img = skimage.io.imread(self.image_names[image_index])
