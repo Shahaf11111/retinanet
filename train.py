@@ -51,6 +51,8 @@ def main(args=None):
     parser.add_argument('--epochs', help='Number of epochs', type=int, default=100)
 
     parser = parser.parse_args(args)
+    if not os.path.exists('retinanet/runs'):
+        os.mkdir('retinanet/runs')
     if parser.resume is False:
         run_dir = get_last_run_dir()
         if run_dir is None:
@@ -193,7 +195,7 @@ def main(args=None):
                 reg_loss.append(float(regression_loss))
 
                 progress_bar.set_description(
-                    'Epoch: {}/{} | clsLoss: {:1.5f} |  regLoss: {:1.5f} | runLoss: {:1.5f}\n'.format(
+                    'Epoch: {}/{} | clsLoss: {:1.5f} |  regLoss: {:1.5f} | runLoss: {:1.5f}'.format(
                         epoch_num, parser.epochs - 1, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
 
             except Exception as e:
