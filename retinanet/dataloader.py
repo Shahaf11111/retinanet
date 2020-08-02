@@ -209,6 +209,7 @@ class CSVDataset(Dataset):
         img = self.load_image(idx)
         annot = self.load_annotations(idx)
         boxes, cls_ids = self.from_annot_to_coco(annot)
+        sample = {'img': img, 'annot': annot}
         if self.transform:
             sample = self.transform(image=img, bboxes=boxes, category_ids=cls_ids)
             img, annot = self.from_coco_to_annot(sample)
