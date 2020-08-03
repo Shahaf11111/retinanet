@@ -103,4 +103,4 @@ ENV/
 *.pt
 
 # global-wheat-detection data
-/GlobalWheatDetectionData/
+/GlobalWheatDetectionData/*
