@@ -3,7 +3,10 @@ import albumentations.augmentations.transforms as T
 import cv2
 import matplotlib.pyplot as plt
 
-from retinanet.dataloader import CSVDataset
+from retinanet.dataloader import CSVDataset, AspectRatioBasedSampler, collater, Resizer
+from torch.utils.data import DataLoader
+
+from torchvision import transforms
 
 
 def gray(p=0.5):
@@ -86,13 +89,20 @@ def main():
             A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5,
             always_apply=False, p=0.2)])
      ]
+    b = transforms.Compose([Resizer()])
+
     # a, b, c = transform_img(img_p, boxes, basic_transforms + augs)
     dataset_train = CSVDataset(train_file='configurations/train.csv',
                                class_list='configurations/classes.csv',
-                               transform=augs)
-    for x in dataset_train:
+                               transform=augs, base_transform=b)
+    batch = 4
+    sampler = AspectRatioBasedSampler(dataset_train, batch_size=batch, drop_last=False)
+    dataloader_train = DataLoader(dataset_train, num_workers=3, collate_fn=collater, batch_sampler=sampler)
+
+    for i, x in enumerate(dataloader_train):
         img, annot = x['img'], x['annot']
         visualize_annot(img, annot)
+        print(img.shape)
         plt.show()
         break
     # print(b)
@@ -102,9 +112,10 @@ def main():
 def visualize_annot(image, annot, category_id_to_name=None):
     if category_id_to_name is None:
         category_id_to_name = {0: 'wheat'}
-    img = image.copy()
+    img = image.permute(0, 3, 1, 2).to('cpu').numpy()[0].copy()
+    annot = annot[0].numpy()
     for x1, y1, x2, y2, category_id in annot:
-        class_name = category_id_to_name[category_id]
+        class_name = category_id_to_name[int(category_id)]
         img = visualize_bbox(img, [x1, y1, x2 - x1, y2 - y1], class_name)
     plt.figure(figsize=(12, 12))
     plt.axis('off')

@@ -8,7 +8,7 @@ import argparse
 import pandas as pd
 import re
 import retinanet.model as model
-
+import matplotlib.pyplot as plt
 
 def load_classes(csv_reader):
     result = {}
@@ -51,7 +51,7 @@ def detect_image(image_path, model_path, class_list, visualize):
     model.training = False
     model.eval()
     all_box_scores = dict()
-
+    images_with_bbox = list()
     for img_name in os.listdir(image_path):
 
         image = cv2.imread(os.path.join(image_path, img_name))
@@ -121,11 +121,12 @@ def detect_image(image_path, model_path, class_list, visualize):
                     cv2.rectangle(image_orig, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
                 else:
                     img_box_scores.append([float('{:1.5f}'.format(scores[j].item())), x1, y1, x2 - x1, y2 - y1])
-            if visualize:
-                cv2.imshow('detections', image_orig)
-                cv2.waitKey(0)
+            if visualize == True:
+              images_with_bbox.append(cv2.cvtColor(image_orig, cv2.COLOR_BGR2RGB))
             else:
-                all_box_scores[img_name.split('.')[0]] = img_box_scores
+              all_box_scores[img_name.split('.')[0]] = img_box_scores
+    if visualize:
+      return images_with_bbox
     return all_box_scores
 
 
@@ -155,21 +156,25 @@ def load_model(model_path, num_classes=1):
     return retinanet
 
 
-if __name__ == '__main__':
-
+if _name_ == '_main_':
     parser = argparse.ArgumentParser(description='Simple script for visualizing result of training.')
 
     parser.add_argument('--image_dir', help='Path to directory containing images')
     parser.add_argument('--model_path', help='Path to model')
     parser.add_argument('--class_list', help='Path to CSV file listing class names (see README)')
-    parser.add_argument('--visualize', help='True: Visualize the results. False: Creates results.csv file.')
-
+    parser.add_argument('--visualize', action='store_true', help='True: Visualize the results. False: Creates results.csv file.')
     parser = parser.parse_args()
     results_path = os.path.join(os.path.abspath(os.path.join(parser.model_path, os.pardir)),
                                 os.path.basename(parser.model_path).split('.')[0] + '.csv')
-
-    results_dict = detect_image(parser.image_dir, parser.model_path, parser.class_list, parser.visualize)
-    if not parser.visualize:
-        results_df = dict_to_df(results_dict)
-        results_df.to_csv(results_path, index=False)
+    results = detect_image(parser.image_dir, parser.model_path, parser.class_list, parser.visualize)
+    if parser.visualize == True:
+        plt.tight_layout()
+        for i in range(min(len(results), 6)):
+            plt.subplot(2, 3, i+1)
+            plt.axis('off')
+            plt.imshow(results[i])
+        plt.savefig(results_path.replace('.csv', '.jpg'), dpi=1000)
+    else:
+      results_df = dict_to_df(results)
+      results_df.to_csv(results_path, index=False)
 

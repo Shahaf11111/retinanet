@@ -210,7 +210,7 @@ def main(args=None):
 
             except Exception as e:
                 print("Exception: " + str(e))
-                continue
+                exit(1)
 
         if parser.dataset == 'coco':
 
