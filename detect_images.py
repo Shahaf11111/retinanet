@@ -156,7 +156,7 @@ def load_model(model_path, num_classes=1):
     return retinanet
 
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simple script for visualizing result of training.')
 
     parser.add_argument('--image_dir', help='Path to directory containing images')
