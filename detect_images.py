@@ -152,7 +152,7 @@ def load_model(model_path, num_classes=1):
         retinanet = model.resnet152(num_classes=num_classes, pretrained=False)
     else:
         raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
-    retinanet.module.load_state_dict(torch.load(model_path)['model'])
+    retinanet.load_state_dict(torch.load(model_path)['model'])
     return retinanet
 
 
