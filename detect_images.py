@@ -152,7 +152,7 @@ def load_model(model_path, num_classes=1):
         retinanet = model.resnet152(num_classes=num_classes, pretrained=False)
     else:
         raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
-    retinanet.load_state_dict(torch.load(model_path)['model'], strict=False)
+    retinanet.module.load_state_dict(torch.load(model_path)['model'])
     return retinanet
 
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     results_path = os.path.join(os.path.abspath(os.path.join(parser.model_path, os.pardir)),
                                 os.path.basename(parser.model_path).split('.')[0] + '.csv')
     results = detect_image(parser.image_dir, parser.model_path, parser.class_list, parser.visualize)
-    if parser.visualize == True:
+    if parser.visualize is True:
         plt.tight_layout()
         for i in range(min(len(results), 6)):
             plt.subplot(2, 3, i+1)

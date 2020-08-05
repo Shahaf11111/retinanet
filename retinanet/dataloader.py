@@ -22,6 +22,29 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
+def get_augs(im_h, im_w):
+    crop_ratio = random.choice([0.5, 0.6, 0.7, 0.8])
+    return [
+        A.OneOf([
+            A.HorizontalFlip(p=0.2),
+            A.VerticalFlip(p=0.2),
+            # A.RandomSizedBBoxSafeCrop(int(crop_ratio * im_h), int(crop_ratio * im_w), erosion_rate=0.0, interpolation=1, always_apply=False, p=0.2)
+        ]),
+        A.OneOf([
+            A.ToGray(p=0.2),
+            A.RandomRain(slant_lower=-10, slant_upper=10, drop_length=20, drop_width=1, drop_color=(200, 200, 200),
+                         blur_value=7, brightness_coefficient=0.7, rain_type=None, always_apply=False, p=0.2),
+            A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.5, alpha_coef=0.08, always_apply=False, p=0.2),
+            A.RandomSunFlare(flare_roi=(0, 0, 1, 0.5), angle_lower=0, angle_upper=1, num_flare_circles_lower=6,
+                             num_flare_circles_upper=10, src_radius=100, src_color=(255, 255, 255),
+                             always_apply=False,
+                             p=0.2),
+            A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5,
+                           always_apply=False, p=0.2)
+        ])
+    ]
+
+
 class CocoDataset(Dataset):
     """Coco dataset."""
 
@@ -126,7 +149,7 @@ class CocoDataset(Dataset):
 class CSVDataset(Dataset):
     """CSV dataset."""
 
-    def __init__(self, train_file, class_list, transform=None, base_transform=None):
+    def __init__(self, train_file, class_list, transform=False, base_transform=None):
         """
         Args:
             train_file (string): CSV file with training annotations
@@ -135,12 +158,10 @@ class CSVDataset(Dataset):
         """
         self.train_file = train_file
         self.class_list = class_list
-        if transform:
-            self.transform = A.Compose(transform,
-                                       bbox_params=A.BboxParams(format='coco',
-                                                                label_fields=['category_ids']))
-        else:
-            self.transform = None
+        # if transform:
+        self.transform = transform
+        # else:
+        #     self.transform = None
         self.base_transform = base_transform
         # parse the provided class file
         try:
@@ -211,7 +232,10 @@ class CSVDataset(Dataset):
         boxes, cls_ids = self.from_annot_to_coco(annot)
         sample = {'img': img, 'annot': annot}
         if self.transform:
-            sample = self.transform(image=img, bboxes=boxes, category_ids=cls_ids)
+            transformation = A.Compose(get_augs(img.shape[0], img.shape[1]),
+                                       bbox_params=A.BboxParams(format='coco',
+                                                                label_fields=['category_ids']))
+            sample = transformation(image=img, bboxes=boxes, category_ids=cls_ids)
             img, annot = self.from_coco_to_annot(sample)
             sample = {'img': img, 'annot': annot}
         if self.base_transform:

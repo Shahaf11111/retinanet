@@ -2,6 +2,7 @@ import glob
 import os
 import argparse
 import collections
+import random
 
 import numpy as np
 
@@ -13,8 +14,7 @@ from tqdm import tqdm
 import albumentations as A
 
 from retinanet import model
-from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
-    Normalizer
+from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler
 from torch.utils.data import DataLoader
 
 from retinanet import coco_eval
@@ -90,13 +90,13 @@ def main(args=None):
         if parser.csv_classes is None:
             raise ValueError('Must provide --csv_classes when training on COCO,')
 
-        if parser.augment:
-            augs = get_augs()
-        else:
-            augs = None
+        # if parser.augment:
+        #     augs = get_augs()
+        # else:
+        #     augs = None
 
         dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes,
-                                   transform=augs, base_transform=base_transform)
+                                   transform=parser.augment, base_transform=base_transform)
 
         if parser.csv_val is None:
             dataset_val = None
@@ -148,18 +148,15 @@ def main(args=None):
     if parser.resume:
         device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
         checkpoint = torch.load(checkpoint_file, map_location=device)
-        # checkpoint = torch.load(get_last_model_path(parser.depth), map_location=device)
-        if checkpoint['model'] is not None:
-            retinanet.load_state_dict(checkpoint['model'], strict=False)
-        if checkpoint['optimizer'] is not None:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-        if checkpoint['training_results'] is not None:
-            with open(results_file, 'w') as file:
-                file.write(checkpoint['training_results'])  # write results.txt
-        if checkpoint['epoch'] is not None:
-            with open(results_file, 'w') as file:
-                start_epoch = checkpoint['epoch'] + 1
-        del checkpoint
+        # if checkpoint['model'] is not None:
+        retinanet.module.load_state_dict(checkpoint['model'])
+        # if checkpoint['optimizer'] is not None:
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        # if checkpoint['training_results'] is not None:
+        with open(results_file, 'w') as file:
+            file.write(checkpoint['training_results'])  # write results.txt
+        # if checkpoint['epoch'] is not None:
+            start_epoch = checkpoint['epoch'] + 1
 
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
     loss_hist = collections.deque(maxlen=500)
@@ -240,27 +237,6 @@ def main(args=None):
         scheduler.step(np.mean(epoch_loss))
 
     retinanet.eval()
-
-
-def get_augs():
-    return [
-        A.OneOf([
-            A.HorizontalFlip(p=0.2),
-            A.VerticalFlip(p=0.2)
-        ]),
-        A.OneOf([
-            A.ToGray(p=0.2),
-            A.RandomRain(slant_lower=-10, slant_upper=10, drop_length=20, drop_width=1, drop_color=(200, 200, 200),
-                         blur_value=7, brightness_coefficient=0.7, rain_type=None, always_apply=False, p=0.2),
-            A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.5, alpha_coef=0.08, always_apply=False, p=0.2),
-            A.RandomSunFlare(flare_roi=(0, 0, 1, 0.5), angle_lower=0, angle_upper=1, num_flare_circles_lower=6,
-                             num_flare_circles_upper=10, src_radius=100, src_color=(255, 255, 255),
-                             always_apply=False,
-                             p=0.2),
-            A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5,
-                           always_apply=False, p=0.2)
-        ])
-    ]
 
 
 if __name__ == '__main__':
