@@ -35,7 +35,7 @@ def draw_caption(image, box, caption):
     cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
 
 
-def detect_image(image_path, model_path, class_list, visualize):
+def detect_image(image_path, model_path, class_list, threshold, visualize):
 
     with open(class_list, 'r') as f:
         classes = load_classes(csv.reader(f, delimiter=','))
@@ -101,7 +101,7 @@ def detect_image(image_path, model_path, class_list, visualize):
             print(image.shape, image_orig.shape, scale)
             scores, classification, transformed_anchors = model(image.cuda().float())
             print('Elapsed time: {}'.format(time.time() - st))
-            idxs = np.where(scores.cpu() > 0.5)
+            idxs = np.where(scores.cpu() > threshold)
             img_box_scores = []
 
             for j in range(idxs[0].shape[0]):
@@ -152,7 +152,12 @@ def load_model(model_path, num_classes=1):
         retinanet = model.resnet152(num_classes=num_classes, pretrained=False)
     else:
         raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
-    retinanet.load_state_dict(torch.load(model_path)['model'])
+    if torch.cuda.is_available():
+        retinanet = retinanet.cuda()
+        retinanet = torch.nn.DataParallel(retinanet).cuda()
+    else:
+        retinanet = torch.nn.DataParallel(retinanet)
+    retinanet.module.load_state_dict(torch.load(model_path)['model'])
     return retinanet
 
 
@@ -162,11 +167,13 @@ if __name__ == '__main__':
     parser.add_argument('--image_dir', help='Path to directory containing images')
     parser.add_argument('--model_path', help='Path to model')
     parser.add_argument('--class_list', help='Path to CSV file listing class names (see README)')
+    parser.add_argument('--thresh', default=0.5, help='Detection score threshold')
     parser.add_argument('--visualize', action='store_true', help='True: Visualize the results. False: Creates results.csv file.')
     parser = parser.parse_args()
+    threshold = float(parser.thresh)
     results_path = os.path.join(os.path.abspath(os.path.join(parser.model_path, os.pardir)),
                                 os.path.basename(parser.model_path).split('.')[0] + '.csv')
-    results = detect_image(parser.image_dir, parser.model_path, parser.class_list, parser.visualize)
+    results = detect_image(parser.image_dir, parser.model_path, parser.class_list, threshold, parser.visualize)
     if parser.visualize is True:
         plt.tight_layout()
         for i in range(min(len(results), 6)):

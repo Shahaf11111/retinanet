@@ -148,15 +148,11 @@ def main(args=None):
     if parser.resume:
         device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
         checkpoint = torch.load(checkpoint_file, map_location=device)
-        # if checkpoint['model'] is not None:
         retinanet.module.load_state_dict(checkpoint['model'])
-        # if checkpoint['optimizer'] is not None:
         optimizer.load_state_dict(checkpoint['optimizer'])
-        # if checkpoint['training_results'] is not None:
         with open(results_file, 'w') as file:
             file.write(checkpoint['training_results'])  # write results.txt
-        # if checkpoint['epoch'] is not None:
-            start_epoch = checkpoint['epoch'] + 1
+        start_epoch = checkpoint['epoch'] + 1
 
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
     loss_hist = collections.deque(maxlen=500)
