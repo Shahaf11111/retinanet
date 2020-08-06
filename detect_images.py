@@ -99,7 +99,10 @@ def detect_image(image_path, model_path, class_list, threshold, visualize):
 
             st = time.time()
             print(image.shape, image_orig.shape, scale)
-            scores, classification, transformed_anchors = model(image.cuda().float())
+            if torch.cuda.is_available():
+                scores, classification, transformed_anchors = model(image.cuda().float())
+            else:
+                scores, classification, transformed_anchors = model(image.cuda().float())
             print('Elapsed time: {}'.format(time.time() - st))
             idxs = np.where(scores.cpu() > threshold)
             img_box_scores = []
@@ -118,7 +121,7 @@ def detect_image(image_path, model_path, class_list, threshold, visualize):
                     caption = '{} {:.3f}'.format(label_name, score)
                     # draw_caption(img, (x1, y1, x2, y2), label_name)
                     draw_caption(image_orig, (x1, y1, x2, y2), caption)
-                    cv2.rectangle(image_orig, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
+                    cv2.rectangle(image_orig, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
                 else:
                     img_box_scores.append([float('{:1.5f}'.format(scores[j].item())), x1, y1, x2 - x1, y2 - y1])
             if visualize == True:
@@ -157,7 +160,8 @@ def load_model(model_path, num_classes=1):
         retinanet = torch.nn.DataParallel(retinanet).cuda()
     else:
         retinanet = torch.nn.DataParallel(retinanet)
-    retinanet.module.load_state_dict(torch.load(model_path)['model'])
+    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+    retinanet.module.load_state_dict(torch.load(model_path, map_location=device)['model'])
     return retinanet
 
 

@@ -146,7 +146,7 @@ def main(args=None):
     optimizer = optim.Adam(retinanet.parameters(), lr=1e-5)
 
     if parser.resume:
-        device = torch.device('cuda:0') if torch.cuda.is_available() else 'cpu'
+        device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
         checkpoint = torch.load(checkpoint_file, map_location=device)
         retinanet.module.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
